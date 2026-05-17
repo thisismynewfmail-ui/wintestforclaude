@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Companion · Restricted</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/xp.css') }}">
+</head>
+<body class="theme-luna fs-15 bubble-shape-rounded">
+
+<div class="bliss" aria-hidden="true">
+    <div class="sun"></div>
+    <div class="cloud c1"></div>
+    <div class="cloud c2"></div>
+    <div class="cloud c3"></div>
+    <div class="cloud c4"></div>
+    <div class="cloud c5"></div>
+</div>
+
+<div class="forbidden-frame">
+    <div class="window forbidden-window">
+        <div class="window-title">
+            <span class="ico"></span>
+            <span class="label">Restricted area</span>
+            <div class="controls">
+                <div class="ctrl" title="Minimize">_</div>
+                <div class="ctrl" title="Maximize">□</div>
+                <a href="/chat" class="ctrl close" title="Back to chat" style="text-decoration:none;">×</a>
+            </div>
+        </div>
+        <div class="window-body" style="padding: 28px;">
+            <h1>Off-limits</h1>
+            <p>This panel is for administrators only. Your account doesn't have the right keys.</p>
+            <p style="margin-top: 18px;">
+                <a class="btn primary" href="/chat" style="text-decoration:none;">Return to chat</a>
+            </p>
+        </div>
+    </div>
+</div>
+
+<div class="scanlines" aria-hidden="true"></div>
+
+</body>
+</html>

@@ -1,0 +1,1 @@
+"""Companion chat application."""

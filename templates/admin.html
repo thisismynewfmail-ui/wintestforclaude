@@ -1,0 +1,324 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Companion · Admin Controls</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/xp.css') }}">
+</head>
+<body class="theme-luna fs-15">
+
+<div class="bliss" aria-hidden="true">
+    <div class="sun"></div>
+    <div class="cloud c1"></div>
+    <div class="cloud c2"></div>
+    <div class="cloud c3"></div>
+    <div class="cloud c4"></div>
+</div>
+
+<div class="admin-frame">
+    <div class="window admin-window">
+        <div class="window-title">
+            <span class="ico"></span>
+            <span class="label">Admin Controls — system configuration</span>
+            <div class="controls">
+                <a href="/chat" class="ctrl" title="Back to chat" style="text-decoration:none;">←</a>
+                <div class="ctrl" title="Maximize">□</div>
+                <a href="#" class="ctrl close" id="logout-btn" title="Sign out" style="text-decoration:none;">×</a>
+            </div>
+        </div>
+
+        <div class="admin-tabs" role="tablist">
+            <div class="admin-tab active" data-section="connection">Connection</div>
+            <div class="admin-tab" data-section="model">Model</div>
+            <div class="admin-tab" data-section="sampling">Sampling</div>
+            <div class="admin-tab" data-section="system">System Message</div>
+            <div class="admin-tab" data-section="template">Chat Template</div>
+            <div class="admin-tab" data-section="personas">Personas</div>
+            <div class="admin-tab" data-section="ui">UI &amp; Thinking</div>
+            <div class="admin-tab" data-section="network">Network</div>
+            <div class="admin-tab" data-section="users">Users</div>
+        </div>
+
+        <div class="admin-body" id="admin-body">
+
+            <!-- CONNECTION -->
+            <div class="admin-section active" data-section="connection">
+                <h2>Connection</h2>
+                <p class="lede">Point at any OpenAI-compatible endpoint.</p>
+
+                <div class="card">
+                    <div class="grid-2">
+                        <div>
+                            <label class="field" for="endpoint">Endpoint URL</label>
+                            <input type="text" id="endpoint" value="{{ config.llm.endpoint }}">
+                            <small class="hint">e.g. <span class="kbd">http://10.0.0.113:5000/v1</span></small>
+                        </div>
+                        <div>
+                            <label class="field" for="api_key">API key (optional)</label>
+                            <input type="password" id="api_key" value="{{ config.llm.api_key }}">
+                            <small class="hint">Sent as <span class="kbd">Authorization: Bearer …</span></small>
+                        </div>
+                    </div>
+                    <div style="margin-top: 14px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                        <button class="btn primary" id="btn-test">Test connection</button>
+                        <span class="admin-status" id="conn-status"><span class="dot"></span><span>unknown</span></span>
+                        <span id="conn-detail" style="font-size: 12px; color: var(--ink-faint);"></span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- MODEL -->
+            <div class="admin-section" data-section="model">
+                <h2>Model</h2>
+                <p class="lede">Which model to call, and how much context to allow.</p>
+
+                <div class="card">
+                    <div class="grid-2">
+                        <div>
+                            <label class="field" for="model_name">Model name</label>
+                            <input type="text" id="model_name" value="{{ config.llm.model_name }}" list="model-options">
+                            <datalist id="model-options"></datalist>
+                            <small class="hint">Use <i>Test connection</i> first to populate suggestions.</small>
+                        </div>
+                        <div>
+                            <label class="field" for="context_size">Context size (tokens)</label>
+                            <input type="number" id="context_size" min="512" step="256" value="{{ config.llm.context_size }}">
+                            <small class="hint">Default 8196. Older turns are cropped from the middle automatically.</small>
+                        </div>
+                    </div>
+
+                    <label class="field" for="compaction_threshold">Compaction threshold</label>
+                    <div class="range-row">
+                        <input type="range" id="compaction_threshold" min="0.3" max="0.95" step="0.05" value="{{ config.llm.compaction_threshold }}">
+                        <span class="val" id="compaction_threshold_val">{{ '%.0f' % (config.llm.compaction_threshold * 100) }}%</span>
+                    </div>
+                    <small class="hint">When the conversation exceeds this fraction of the window, the middle is trimmed silently.</small>
+                </div>
+            </div>
+
+            <!-- SAMPLING -->
+            <div class="admin-section" data-section="sampling">
+                <h2>Sampling</h2>
+                <p class="lede">All values are sent on every request, under the standard parameter names.</p>
+
+                <div class="grid-2">
+                    <div class="card">
+                        <h3>Core</h3>
+                        <label class="field">Temperature
+                            <span style="float:right;" class="val" id="temperature_val">{{ config.sampling.temperature }}</span>
+                        </label>
+                        <input type="range" id="temperature" min="0" max="2" step="0.05" value="{{ config.sampling.temperature }}">
+
+                        <label class="field">Top P
+                            <span style="float:right;" class="val" id="top_p_val">{{ config.sampling.top_p }}</span>
+                        </label>
+                        <input type="range" id="top_p" min="0" max="1" step="0.01" value="{{ config.sampling.top_p }}">
+
+                        <label class="field">Top K
+                            <span style="float:right;" class="val" id="top_k_val">{{ config.sampling.top_k }}</span>
+                        </label>
+                        <input type="range" id="top_k" min="0" max="200" step="1" value="{{ config.sampling.top_k }}">
+
+                        <label class="field">Min P
+                            <span style="float:right;" class="val" id="min_p_val">{{ config.sampling.min_p }}</span>
+                        </label>
+                        <input type="range" id="min_p" min="0" max="0.5" step="0.01" value="{{ config.sampling.min_p }}">
+                    </div>
+
+                    <div class="card">
+                        <h3>Penalties &amp; limits</h3>
+                        <label class="field">Repeat penalty
+                            <span style="float:right;" class="val" id="repeat_penalty_val">{{ config.sampling.repeat_penalty }}</span>
+                        </label>
+                        <input type="range" id="repeat_penalty" min="0.8" max="1.5" step="0.01" value="{{ config.sampling.repeat_penalty }}">
+                        <small class="hint">Sent as <span class="kbd">repetition_penalty</span> and <span class="kbd">repeat_penalty</span>.</small>
+
+                        <label class="field">Frequency penalty
+                            <span style="float:right;" class="val" id="frequency_penalty_val">{{ config.sampling.frequency_penalty }}</span>
+                        </label>
+                        <input type="range" id="frequency_penalty" min="-2" max="2" step="0.05" value="{{ config.sampling.frequency_penalty }}">
+
+                        <label class="field">Presence penalty
+                            <span style="float:right;" class="val" id="presence_penalty_val">{{ config.sampling.presence_penalty }}</span>
+                        </label>
+                        <input type="range" id="presence_penalty" min="-2" max="2" step="0.05" value="{{ config.sampling.presence_penalty }}">
+
+                        <label class="field" for="max_tokens">Max reply tokens</label>
+                        <input type="number" id="max_tokens" min="16" max="32768" step="16" value="{{ config.sampling.max_tokens }}">
+                    </div>
+                </div>
+            </div>
+
+            <!-- SYSTEM MESSAGE -->
+            <div class="admin-section" data-section="system">
+                <h2>System Message</h2>
+                <p class="lede">Sent above every conversation, for every user. Special tags are replaced per-request.</p>
+
+                <div class="card">
+                    <label class="field">System message</label>
+                    <textarea id="system_message" rows="10">{{ config.llm.system_message }}</textarea>
+                    <small class="hint">
+                        Tags:
+                        <span class="tags">{time}</span>
+                        <span class="tags">{user_name}</span>
+                        <span class="tags">{bot_name}</span>
+                        <span class="tags">{persona_A}</span>
+                        <span class="tags">{persona_B}</span>
+                        <span class="tags">{persona_C}</span>
+                        <span class="tags">{persona_D}</span>
+                    </small>
+                </div>
+            </div>
+
+            <!-- CHAT TEMPLATE -->
+            <div class="admin-section" data-section="template">
+                <h2>Chat Template</h2>
+                <p class="lede">The Jinja format used to wrap messages for the model. Override only if you know your model needs something specific.</p>
+
+                <div class="card">
+                    <label class="field" for="chat_template_preset">Preset</label>
+                    <select id="chat_template_preset">
+                        {% for name in template_presets %}
+                        <option value="{{ name }}" {% if config.llm.chat_template_preset == name %}selected{% endif %}>{{ name }}</option>
+                        {% endfor %}
+                    </select>
+
+                    <label class="field" style="margin-top: 14px;">Template preview</label>
+                    <textarea id="template_preview" rows="6" readonly style="font-family: Consolas, Menlo, monospace; font-size: 12px;"></textarea>
+
+                    <div style="margin-top: 14px;">
+                        <label style="display: flex; align-items: center; gap: 8px; font-size: 13px;">
+                            <input type="checkbox" id="use_template_override" {% if config.llm.use_template_override %}checked{% endif %}>
+                            Override the preset and use my own Jinja template
+                        </label>
+                    </div>
+
+                    <label class="field">Custom Jinja template</label>
+                    <textarea id="chat_template_override" rows="8" style="font-family: Consolas, Menlo, monospace; font-size: 12px;">{{ config.llm.chat_template_override }}</textarea>
+                    <small class="hint">Server applies this through the OpenAI-compatible endpoint, which renders the template on its side. Most local servers ignore this field; included for completeness.</small>
+                </div>
+            </div>
+
+            <!-- PERSONAS -->
+            <div class="admin-section" data-section="personas">
+                <h2>Personas</h2>
+                <p class="lede">Four personalities your users pick between. The <i>description</i> is what the model sees (via <span class="tags">{persona_X}</span> in the system message). The <i>summary</i> is what the user sees in their settings drawer.</p>
+
+                <div class="grid-2">
+                    {% for k in ['A','B','C','D'] %}
+                    <div class="card persona-card-admin" data-key="{{ k }}">
+                        <h3>Persona {{ k }}</h3>
+                        <label class="field">Display name</label>
+                        <input type="text" data-field="persona_{{ k }}_name" value="{{ config.personas[k].name }}">
+
+                        <label class="field">Summary (shown to user)</label>
+                        <textarea data-field="persona_{{ k }}_summary" rows="3">{{ config.personas[k].summary }}</textarea>
+
+                        <label class="field">Description (sent to model via <span class="tags">{persona_{{ k }}}</span>)</label>
+                        <textarea data-field="persona_{{ k }}_description" rows="5">{{ config.personas[k].description }}</textarea>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <!-- UI & THINKING -->
+            <div class="admin-section" data-section="ui">
+                <h2>UI &amp; Thinking</h2>
+                <p class="lede">Streaming behavior, and how thinking blocks appear in the chat.</p>
+
+                <div class="card">
+                    <h3>Streaming</h3>
+                    <label class="field">Fade-in duration
+                        <span style="float:right;" class="val" id="fade_in_ms_val">{{ config.llm.fade_in_ms }}ms</span>
+                    </label>
+                    <input type="range" id="fade_in_ms" min="0" max="800" step="10" value="{{ config.llm.fade_in_ms }}">
+
+                    <label class="field">Stream speed hint
+                        <span style="float:right;" class="val" id="stream_speed_ms_val">{{ config.llm.stream_speed_ms }}ms/char</span>
+                    </label>
+                    <input type="range" id="stream_speed_ms" min="0" max="80" step="1" value="{{ config.llm.stream_speed_ms }}">
+                    <small class="hint">Client-side throttle target. 0 = as fast as the network arrives.</small>
+                </div>
+
+                <div class="card">
+                    <h3>Thinking</h3>
+                    <label style="display: flex; align-items: center; gap: 8px; font-size: 14px;">
+                        <input type="checkbox" id="thinking_enabled" {% if config.llm.thinking_enabled %}checked{% endif %}>
+                        Show thinking blocks in chat (when the model emits them)
+                    </label>
+                    <label style="display: flex; align-items: center; gap: 8px; margin-top: 8px; font-size: 14px;">
+                        <input type="checkbox" id="thinking_compact_default" {% if config.llm.thinking_compact_default %}checked{% endif %}>
+                        Collapse thinking by default (users can expand)
+                    </label>
+                    <label style="display: flex; align-items: center; gap: 8px; margin-top: 8px; font-size: 14px;">
+                        <input type="checkbox" id="thinking_hidden" {% if config.llm.thinking_hidden %}checked{% endif %}>
+                        Hide thinking entirely from the chat UI
+                    </label>
+                </div>
+            </div>
+
+            <!-- NETWORK -->
+            <div class="admin-section" data-section="network">
+                <h2>Network</h2>
+                <p class="lede">Visibility on your local network. All settings apply universally to every signed-in user, regardless of LAN visibility.</p>
+
+                <div class="card">
+                    <label style="display: flex; align-items: center; gap: 8px; font-size: 14px;">
+                        <input type="checkbox" id="lan_visible" {% if config.server.lan_visible %}checked{% endif %}>
+                        Allow connections from other devices on the LAN
+                    </label>
+                    <small class="hint">When off, the server only binds to 127.0.0.1.</small>
+
+                    <label class="field" for="port" style="margin-top: 14px;">Port</label>
+                    <input type="number" id="port" min="1024" max="65535" value="{{ config.server.port }}">
+                    <small class="hint">Restart required after changing the port.</small>
+                </div>
+
+                <div class="card">
+                    <h3>Apply settings to live sessions</h3>
+                    <p style="font-size: 13px; color: var(--ink-soft); margin: 0 0 6px;">
+                        Saving below updates the configuration on disk and in-memory for every running instance. Each user's next message immediately uses the new settings — no relog required, except for changes to <span class="kbd">port</span> or <span class="kbd">lan_visible</span>.
+                    </p>
+                </div>
+            </div>
+
+            <!-- USERS -->
+            <div class="admin-section" data-section="users">
+                <h2>Users</h2>
+                <p class="lede">Manage who can sign in and who can reach this panel.</p>
+
+                <div class="card">
+                    <table class="users" id="user-table">
+                        <thead>
+                            <tr>
+                                <th>Username</th><th>Name</th><th>Email</th>
+                                <th>Role</th><th>Messages</th><th></th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+
+        </div>
+
+        <div class="sticky-actions">
+            <button class="btn ghost" id="btn-reload">Reload</button>
+            <button class="btn primary" id="btn-apply">Apply Settings</button>
+        </div>
+    </div>
+</div>
+
+<div class="toast" id="toast"></div>
+<div class="scanlines" aria-hidden="true"></div>
+
+<script>
+window.__ADMIN__ = {
+    config: {{ config | tojson }},
+    template_presets: {{ template_presets | tojson }},
+};
+</script>
+<script src="{{ url_for('static', filename='js/admin.js') }}"></script>
+</body>
+</html>

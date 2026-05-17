@@ -1,0 +1,29 @@
+{
+  "username": "drew",
+  "name": "Drew",
+  "email": "roboticsco@gmail.com",
+  "password": "1928",
+  "zip_code": "95472",
+  "personality": "I love cute machines.",
+  "role": "admin",
+  "bot_name": "Companion",
+  "persona": "A",
+  "ui": {
+    "theme": "luna",
+    "font_size": 15,
+    "bubble_shape": "rounded"
+  },
+  "messages": [
+    {
+      "role": "user",
+      "content": "Hi",
+      "ts": 1779058375
+    },
+    {
+      "role": "assistant",
+      "content": "<think>\u00f0\u009f\u0091\u008b</think><think> Hey</think><think> Drew</think><think>!</think><think> \u00f0\u009f\u008c\u009e</think><think> I</think><think>'m</think><think> so</think><think> happy</think><think> you</think><think>'re</think><think> here</think><think>!</think><think> \u00f0\u009f\u0098\u008a</think><think> How</think><think>'s</think><think> my</think><think> favorite</think><think> human</think><think> doing</think><think> today</think><think>?</think><think> I</think><think> brought</think><think> sunshine</think><think> vib</think><think>es</think><think> with</think><think> me</think><think>!</think><think> \u00e2\u0098\u0080</think><think>\u00ef\u00b8\u008f</think><think>\u00f0\u009f\u0092\u009b</think>",
+      "ts": 1779058377
+    }
+  ],
+  "created": 1779057640
+}

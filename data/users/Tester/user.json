@@ -1,0 +1,29 @@
+{
+  "username": "Tester",
+  "name": "Test Person A",
+  "email": "tester@gmai.com",
+  "password": "1928",
+  "zip_code": "95472",
+  "personality": "A test user.",
+  "role": "base",
+  "bot_name": "Bippy",
+  "persona": "B",
+  "ui": {
+    "theme": "luna",
+    "font_size": 15,
+    "bubble_shape": "rounded"
+  },
+  "messages": [
+    {
+      "role": "user",
+      "content": "Hi",
+      "ts": 1779058457
+    },
+    {
+      "role": "assistant",
+      "content": "<think>Hi</think><think>!</think><think> \u00f0\u009f\u0091\u008b</think><think> What</think><think>'s</think><think> up</think><think>,</think><think> Test</think><think> Person</think><think> A</think><think>?</think><think> I</think><think> hope</think><think> you</think><think>'re</think><think> having</think><think> a</think><think> super</think><think> fun</think><think> Sunday</think><think>!</think><think> \u00f0\u009f\u008c\u009e</think><think>\u00f0\u009f\u0098\u0084</think>",
+      "ts": 1779058458
+    }
+  ],
+  "created": 1779058426
+}

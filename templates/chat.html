@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Companion · Chat</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/xp.css') }}">
+</head>
+<body class="theme-{{ user.ui.theme or ui_defaults.theme }} fs-{{ user.ui.font_size or ui_defaults.font_size }} bubble-shape-{{ user.ui.bubble_shape or ui_defaults.bubble_shape }}{% if thinking_hidden %} think-hidden{% endif %}">
+
+<!-- Bliss background -->
+<div class="bliss" aria-hidden="true">
+    <div class="sun"></div>
+    <div class="cloud c1"></div>
+    <div class="cloud c2"></div>
+    <div class="cloud c3"></div>
+    <div class="cloud c4"></div>
+    <div class="cloud c5"></div>
+</div>
+
+<div class="chat-frame">
+    <div class="window chat-window">
+        <div class="window-title">
+            <span class="ico"></span>
+            <span class="label" id="title-label">{{ user.bot_name or "Companion" }} — chatting with {{ user.name }}</span>
+            <div class="controls">
+                <div class="ctrl" title="Minimize">_</div>
+                <div class="ctrl" title="Maximize">□</div>
+                <div class="ctrl close" id="logout-btn" title="Sign out">×</div>
+            </div>
+        </div>
+
+        <div class="chat-toolbar">
+            <span class="pill" id="conn-pill" title="Connection state">
+                <span class="dot"></span><span id="conn-text">checking…</span>
+            </span>
+            <span class="pill" id="ctx-pill" title="Context usage">
+                <span class="dot"></span><span id="ctx-text">— / —</span>
+            </span>
+            <span class="pill compacted" id="compact-pill" title="Conversation was compacted" style="display:none;">
+                <span class="dot"></span>memory tidied
+            </span>
+            <span class="spacer"></span>
+            <span style="font-size:12px; color: var(--ink-faint);">signed in as <b>{{ user.username }}</b>{% if user.role == 'admin' %} · admin{% endif %}</span>
+            <button class="gear-btn" id="open-settings" aria-label="Settings" title="Settings">⚙</button>
+        </div>
+
+        <div class="context-bar"><div class="fill" id="ctx-fill"></div></div>
+
+        <div class="chat-body" id="chat-body">
+            <!-- Messages get appended here -->
+        </div>
+
+        <form class="composer" id="composer">
+            <textarea id="msg-input" placeholder="Say something…" autocomplete="off"></textarea>
+            <button type="submit" class="btn primary" id="send-btn">Send</button>
+        </form>
+    </div>
+</div>
+
+<!-- Settings drawer -->
+<div class="drawer-scrim" id="drawer-scrim"></div>
+<aside class="drawer" id="drawer" aria-hidden="true">
+    <div class="drawer-head">
+        <span class="ico"></span>
+        <span>Settings</span>
+        <span class="spacer"></span>
+        <span class="close" id="close-drawer">close</span>
+    </div>
+    <div class="drawer-body">
+        <div class="section">
+            <h3>About</h3>
+            <p style="margin: 4px 0 0; font-size: 13px; color: var(--ink-soft); line-height: 1.5;">
+                A small window onto a long conversation. Your companion is yours alone —
+                its name, its mood, what it remembers — and nothing here leaves this machine
+                without your saying so.
+            </p>
+        </div>
+
+        <div class="section">
+            <h3>Companion</h3>
+            <label class="field" for="set-bot-name">Bot's name</label>
+            <input type="text" id="set-bot-name" value="{{ user.bot_name }}" maxlength="40">
+            <small class="hint">Whatever you call it. The model will be told.</small>
+        </div>
+
+        <div class="section">
+            <h3>Persona</h3>
+            <p style="font-size:12px; color: var(--ink-faint); margin: 0 0 8px;">Choose how your companion shows up today.</p>
+            <div id="persona-list">
+                {% for key, p in personas.items() %}
+                <div class="persona-card{% if user.persona == key %} selected{% endif %}" data-key="{{ key }}">
+                    <div class="persona-name">{{ p.name }}</div>
+                    <div class="persona-summary">{{ p.summary }}</div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <div class="section">
+            <h3>Local time</h3>
+            <label class="field" for="set-zip">Zip code</label>
+            <input type="text" id="set-zip" value="{{ user.zip_code }}" pattern="\d{5}(-\d{4})?">
+            <small class="hint">Used to tell your companion the current time.</small>
+        </div>
+
+        <div class="section">
+            <h3>Appearance</h3>
+            <label class="field">Theme</label>
+            <div class="theme-grid" id="theme-grid">
+                <div class="theme-chip luna{% if (user.ui.theme or 'luna') == 'luna' %} selected{% endif %}" data-theme="luna"><span>Luna</span></div>
+                <div class="theme-chip parchment{% if user.ui.theme == 'parchment' %} selected{% endif %}" data-theme="parchment"><span>Parchment</span></div>
+                <div class="theme-chip moss{% if user.ui.theme == 'moss' %} selected{% endif %}" data-theme="moss"><span>Moss</span></div>
+                <div class="theme-chip dusk{% if user.ui.theme == 'dusk' %} selected{% endif %}" data-theme="dusk"><span>Dusk</span></div>
+                <div class="theme-chip candy{% if user.ui.theme == 'candy' %} selected{% endif %}" data-theme="candy"><span>Candy</span></div>
+                <div class="theme-chip silver{% if user.ui.theme == 'silver' %} selected{% endif %}" data-theme="silver"><span>Silver</span></div>
+            </div>
+
+            <label class="field" style="margin-top: 14px;">Bubble shape</label>
+            <select id="set-bubble-shape">
+                <option value="rounded" {% if (user.ui.bubble_shape or 'rounded')=='rounded' %}selected{% endif %}>Rounded</option>
+                <option value="square"  {% if user.ui.bubble_shape=='square' %}selected{% endif %}>Square</option>
+                <option value="cloud"   {% if user.ui.bubble_shape=='cloud' %}selected{% endif %}>Cloud</option>
+            </select>
+
+            <label class="field" style="margin-top: 14px;">Font size</label>
+            <div class="range-row">
+                <input type="range" id="set-font-size" min="13" max="18" step="1" value="{{ user.ui.font_size or 15 }}">
+                <span class="val" id="font-size-val">{{ user.ui.font_size or 15 }}px</span>
+            </div>
+        </div>
+
+        <div class="section">
+            <h3>Mind</h3>
+            <p style="font-size: 13px; color: var(--ink-soft); margin: 0 0 10px;">
+                Clear the chat history. Your companion won't remember what was said.
+            </p>
+            <button class="btn danger" id="reset-mind">Reset Mind</button>
+        </div>
+
+        <div class="section" style="margin-top: 18px; border-top: 1px solid var(--rule); padding-top: 14px;">
+            <button class="btn ghost" id="signout-link">Sign out</button>
+        </div>
+    </div>
+</aside>
+
+<div class="toast" id="toast"></div>
+<div class="scanlines" aria-hidden="true"></div>
+
+<script>
+window.__APP__ = {
+    user: {{ user | tojson }},
+    personas: {{ personas | tojson }},
+    thinking_enabled: {{ thinking_enabled | tojson }},
+    thinking_hidden: {{ thinking_hidden | tojson }},
+    thinking_compact_default: {{ thinking_compact_default | tojson }},
+    stream_speed_ms: {{ stream_speed_ms | tojson }},
+    fade_in_ms: {{ fade_in_ms | tojson }},
+};
+</script>
+<script src="{{ url_for('static', filename='js/chat.js') }}"></script>
+</body>
+</html>

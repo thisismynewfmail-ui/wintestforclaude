@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Companion · Sign in</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/xp.css') }}">
+</head>
+<body>
+
+<!-- Bliss background -->
+<div class="bliss" aria-hidden="true">
+    <div class="sun"></div>
+    <div class="cloud c1"></div>
+    <div class="cloud c2"></div>
+    <div class="cloud c3"></div>
+    <div class="cloud c4"></div>
+    <div class="cloud c5"></div>
+</div>
+
+<div class="login-frame">
+    <div class="window login-window">
+        <div class="window-title">
+            <span class="ico"></span>
+            <span class="label">Companion — Sign in</span>
+            <div class="controls">
+                <div class="ctrl" title="Minimize">_</div>
+                <div class="ctrl" title="Maximize">□</div>
+                <div class="ctrl close" title="Close">×</div>
+            </div>
+        </div>
+
+        <div class="login-body">
+            <div class="login-header">
+                <h1>A small window. A long memory.</h1>
+                <p>Sign in to meet your companion, or make a new account.</p>
+            </div>
+
+            <div class="tabs" role="tablist">
+                <div class="tab active" data-tab="signin" role="tab">Sign in</div>
+                <div class="tab" data-tab="signup" role="tab">Create account</div>
+            </div>
+
+            <div id="msg-error" class="error" style="display:none;"></div>
+            <div id="msg-notice" class="notice" style="display:none;"></div>
+
+            <!-- SIGN IN -->
+            <form id="form-signin" autocomplete="on">
+                <label class="field" for="signin-id">Username or Email</label>
+                <input id="signin-id" type="text" name="identifier" required autocomplete="username">
+
+                <label class="field" for="signin-pw">Password</label>
+                <input id="signin-pw" type="password" name="password" required autocomplete="current-password">
+
+                <div style="margin-top: 20px; display: flex; justify-content: flex-end;">
+                    <button type="submit" class="btn primary">Sign in</button>
+                </div>
+            </form>
+
+            <!-- SIGN UP -->
+            <form id="form-signup" autocomplete="on" style="display:none;">
+                <div class="two-col">
+                    <div>
+                        <label class="field" for="su-username">Username</label>
+                        <input id="su-username" type="text" name="username" required autocomplete="username">
+                    </div>
+                    <div>
+                        <label class="field" for="su-username2">Confirm username</label>
+                        <input id="su-username2" type="text" name="username2" required autocomplete="off">
+                    </div>
+                    <div>
+                        <label class="field" for="su-name">Your name</label>
+                        <input id="su-name" type="text" name="name" required autocomplete="given-name">
+                    </div>
+                    <div>
+                        <label class="field" for="su-email">Email</label>
+                        <input id="su-email" type="email" name="email" required autocomplete="email">
+                    </div>
+                    <div>
+                        <label class="field" for="su-pw">Password</label>
+                        <input id="su-pw" type="password" name="password" required autocomplete="new-password">
+                    </div>
+                    <div>
+                        <label class="field" for="su-pw2">Confirm password</label>
+                        <input id="su-pw2" type="password" name="password2" required autocomplete="new-password">
+                    </div>
+                    <div>
+                        <label class="field" for="su-zip">Zip code (for local time)</label>
+                        <input id="su-zip" type="text" name="zip_code" required autocomplete="postal-code" pattern="\d{5}(-\d{4})?">
+                    </div>
+                </div>
+
+                <label class="field" for="su-personality">A short summary of yourself</label>
+                <textarea id="su-personality" name="personality" required
+                    placeholder="What you're like, what you enjoy, how you talk. A few honest sentences."></textarea>
+                <small class="hint">Your companion gets to know you better with this.</small>
+
+                <div style="margin-top: 20px; display: flex; justify-content: flex-end;">
+                    <button type="submit" class="btn primary">Create account</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div class="scanlines" aria-hidden="true"></div>
+
+<script src="{{ url_for('static', filename='js/login.js') }}"></script>
+</body>
+</html>
