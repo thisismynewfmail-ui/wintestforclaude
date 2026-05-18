@@ -965,6 +965,230 @@ body.fs-16 .msg .bubble, body.fs-16 .composer textarea { font-size: 16px; }
 body.fs-17 .msg .bubble, body.fs-17 .composer textarea { font-size: 17px; }
 body.fs-18 .msg .bubble, body.fs-18 .composer textarea { font-size: 18px; }
 
+/* =========================================================================
+   Signup persona picker
+   ========================================================================= */
+
+.signup-persona-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+}
+@media (max-width: 540px) {
+    .signup-persona-grid { grid-template-columns: 1fr; }
+}
+.signup-persona-card {
+    position: relative;
+    padding: 12px 14px 14px;
+    background: linear-gradient(180deg, #ffffff, var(--paper));
+    border: 1px solid var(--rule);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: border-color .15s var(--ease), background .15s var(--ease),
+                box-shadow .15s var(--ease), transform .15s var(--ease);
+}
+.signup-persona-card:hover {
+    background: var(--btn-hover);
+    transform: translateY(-1px);
+}
+.signup-persona-card.selected {
+    border-color: var(--luna-bright);
+    background: var(--luna-glow);
+    box-shadow: 0 0 0 2px var(--luna-bright) inset,
+                0 4px 16px rgba(35, 98, 200, .2);
+}
+.signup-persona-card .persona-letter {
+    position: absolute; top: 8px; right: 10px;
+    font-family: "Georgia", serif;
+    font-size: 22px; color: var(--luna-bright);
+    opacity: .6;
+}
+.signup-persona-card.selected .persona-letter {
+    color: var(--luna-deep); opacity: 1;
+}
+.signup-persona-card .persona-name {
+    font-weight: bold; color: var(--luna-deep);
+    margin-bottom: 4px; font-size: 15px;
+}
+.signup-persona-card .persona-summary {
+    font-size: 12.5px; color: var(--ink-soft); line-height: 1.45;
+}
+
+/* =========================================================================
+   Modal warning dialog (Reset Mind confirmation)
+   ========================================================================= */
+
+.modal-scrim {
+    position: fixed; inset: 0;
+    background: rgba(8, 24, 60, .45);
+    z-index: 200;
+    display: none;
+    align-items: center; justify-content: center;
+    padding: 20px;
+    opacity: 0;
+    transition: opacity .18s var(--ease);
+}
+.modal-scrim.open {
+    display: flex;
+    opacity: 1;
+}
+.modal-card {
+    width: min(480px, 100%);
+    background: var(--paper);
+    border: 1px solid var(--chrome-edge);
+    border-radius: 8px;
+    box-shadow: var(--shadow-hard);
+    overflow: hidden;
+    transform: translateY(8px);
+    transition: transform .18s var(--ease);
+}
+.modal-scrim.open .modal-card { transform: translateY(0); }
+.modal-head {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 14px;
+    background: linear-gradient(180deg, #ffe6b8, #f0c060);
+    color: #5e4a1a; font-weight: bold;
+    border-bottom: 1px solid #b8881e;
+}
+.modal-head.warning .modal-ico {
+    width: 22px; height: 22px;
+    background: #c23b3b; color: #fff;
+    border-radius: 50%;
+    display: inline-flex; align-items: center; justify-content: center;
+    font-weight: bold; font-family: "Georgia", serif;
+}
+.modal-body {
+    padding: 16px 18px 4px;
+    font-size: 14px; color: var(--ink);
+    line-height: 1.55;
+}
+.modal-body p { margin: 0 0 10px; }
+.modal-actions {
+    display: flex; justify-content: flex-end; gap: 8px;
+    padding: 12px 18px 16px;
+}
+
+/* =========================================================================
+   Reselect-persona overlay  (novel, used ONLY after Reset Mind)
+   Distinct from the drawer's old picker and from the signup grid: this is
+   a full-screen quiet stage with a different palette and rhythm so the
+   user knows they are in a one-off transition moment.
+   ========================================================================= */
+
+.reselect-overlay {
+    position: fixed; inset: 0;
+    z-index: 220;
+    display: none;
+    background:
+        radial-gradient(ellipse 60% 50% at 50% 30%, rgba(255,255,255,.18), transparent 70%),
+        linear-gradient(180deg, #0a1130 0%, #1a2a5e 55%, #0a1130 100%);
+    color: #ecf1ff;
+    overflow-y: auto;
+    opacity: 0;
+    transition: opacity .35s var(--ease);
+}
+.reselect-overlay.open { display: block; opacity: 1; }
+
+.reselect-stage {
+    max-width: 980px;
+    margin: 0 auto;
+    padding: 56px 28px 48px;
+    text-align: center;
+}
+.reselect-header { margin-bottom: 36px; }
+.reselect-eyebrow {
+    text-transform: uppercase;
+    letter-spacing: 3px;
+    font-size: 11px;
+    color: #9bb3e8;
+    margin-bottom: 14px;
+}
+.reselect-header h1 {
+    font-family: "Georgia", serif;
+    font-weight: 400;
+    font-size: 30px;
+    margin: 0 0 10px;
+    color: #ffffff;
+    letter-spacing: .3px;
+}
+.reselect-header p {
+    margin: 0 auto;
+    max-width: 520px;
+    font-size: 14px;
+    color: #c8d4f0;
+    font-style: italic;
+    line-height: 1.55;
+}
+
+.reselect-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 14px;
+}
+@media (max-width: 860px) { .reselect-grid { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 480px) { .reselect-grid { grid-template-columns: 1fr; } }
+
+.reselect-card {
+    display: flex; flex-direction: column; align-items: stretch;
+    text-align: left;
+    padding: 18px 16px 14px;
+    background: rgba(255,255,255,.06);
+    border: 1px solid rgba(255,255,255,.18);
+    border-radius: 10px;
+    color: #ecf1ff;
+    cursor: pointer;
+    font: inherit;
+    transition: background .18s var(--ease), border-color .18s var(--ease),
+                transform .18s var(--ease), box-shadow .18s var(--ease);
+    backdrop-filter: blur(3px);
+}
+.reselect-card:hover {
+    background: rgba(255,255,255,.13);
+    border-color: rgba(255,255,255,.45);
+    transform: translateY(-2px);
+    box-shadow: 0 12px 30px rgba(0,0,0,.35);
+}
+.reselect-card .reselect-letter {
+    font-family: "Georgia", serif;
+    font-size: 42px;
+    line-height: 1;
+    color: #b9d3f5;
+    margin-bottom: 8px;
+    opacity: .85;
+}
+.reselect-card .reselect-name {
+    font-size: 18px;
+    font-weight: bold;
+    color: #ffffff;
+    margin-bottom: 6px;
+}
+.reselect-card .reselect-summary {
+    font-size: 12.5px;
+    color: #c0cee8;
+    line-height: 1.5;
+    flex: 1;
+    margin-bottom: 12px;
+}
+.reselect-card .reselect-pick {
+    text-align: center;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    padding: 8px 0;
+    background: linear-gradient(180deg, #4f8df0, #2362c8);
+    border-radius: 6px;
+    color: #fff;
+    border: 1px solid #2a4fa0;
+}
+.reselect-card.picked {
+    background: var(--luna-glow);
+    border-color: var(--luna-bright);
+    color: var(--luna-deep);
+}
+.reselect-card.picked .reselect-summary { color: var(--ink-soft); }
+.reselect-card.picked .reselect-name,
+.reselect-card.picked .reselect-letter { color: var(--luna-deep); }
+
 /* Subtle scanline overlay for full-screen nostalgia */
 .scanlines {
     position: fixed; inset: 0;
