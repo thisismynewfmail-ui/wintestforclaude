@@ -34,6 +34,18 @@
         });
     });
 
+    // Persona selection on signup form. Click a card to pick it — the value
+    // is committed to a hidden input so the form-submit handler can read it.
+    const personaCards = document.querySelectorAll(".signup-persona-card");
+    const personaInput = document.getElementById("su-persona");
+    personaCards.forEach((card) => {
+        card.addEventListener("click", () => {
+            personaCards.forEach((c) => c.classList.remove("selected"));
+            card.classList.add("selected");
+            if (personaInput) personaInput.value = card.dataset.key;
+        });
+    });
+
     async function postJSON(url, body) {
         const r = await fetch(url, {
             method: "POST",
@@ -73,7 +85,12 @@
             password2: document.getElementById("su-pw2").value,
             zip_code: document.getElementById("su-zip").value.trim(),
             personality: document.getElementById("su-personality").value.trim(),
+            persona: (personaInput && personaInput.value) || "",
         };
+        if (!body.persona) {
+            showError("Pick one of the four companions.");
+            return;
+        }
         const { data } = await postJSON("/api/signup", body);
         if (data.ok) {
             if (data.first_admin) {

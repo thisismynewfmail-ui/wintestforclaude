@@ -420,16 +420,6 @@
     document.getElementById("close-drawer").addEventListener("click", closeDrawer);
     scrim.addEventListener("click", closeDrawer);
 
-    // Persona pick
-    document.querySelectorAll(".persona-card").forEach((card) => {
-        card.addEventListener("click", async () => {
-            document.querySelectorAll(".persona-card").forEach((c) => c.classList.remove("selected"));
-            card.classList.add("selected");
-            const key = card.dataset.key;
-            await saveSettings({ persona: key });
-        });
-    });
-
     // Theme pick
     document.querySelectorAll(".theme-chip").forEach((chip) => {
         chip.addEventListener("click", async () => {
@@ -488,19 +478,75 @@
         }, 700);
     });
 
-    // Reset mind
-    document.getElementById("reset-mind").addEventListener("click", async () => {
-        if (!confirm("Clear all chat history with your companion? This cannot be undone.")) return;
+    // ---- Reset Mind flow ---------------------------------------------------
+    //
+    // 1. Click Reset Mind            → opens a warning dialog (modal).
+    // 2. Confirm                     → POST /api/user/reset (archive log).
+    // 3. Show the novel persona      → user picks one of A/B/C/D.
+    //    reselect overlay
+    // 4. Pick                        → POST /api/user/settings (persona=X),
+    //                                  close overlay, reload empty chat.
+    //
+    // Per-user only: every step here targets the logged-in user's record.
+    const warnScrim = document.getElementById("reset-warn-scrim");
+    const reselectOverlay = document.getElementById("reselect-overlay");
+
+    function openWarn() {
+        warnScrim.classList.add("open");
+        warnScrim.setAttribute("aria-hidden", "false");
+    }
+    function closeWarn() {
+        warnScrim.classList.remove("open");
+        warnScrim.setAttribute("aria-hidden", "true");
+    }
+    function openReselect() {
+        reselectOverlay.classList.add("open");
+        reselectOverlay.setAttribute("aria-hidden", "false");
+    }
+    function closeReselect() {
+        reselectOverlay.classList.remove("open");
+        reselectOverlay.setAttribute("aria-hidden", "true");
+    }
+
+    document.getElementById("reset-mind").addEventListener("click", () => {
+        closeDrawer();
+        openWarn();
+    });
+    document.getElementById("reset-cancel").addEventListener("click", closeWarn);
+    warnScrim.addEventListener("click", (e) => {
+        if (e.target === warnScrim) closeWarn();
+    });
+
+    document.getElementById("reset-confirm").addEventListener("click", async () => {
         const r = await fetch("/api/user/reset", { method: "POST", credentials: "same-origin" });
         const d = await r.json();
-        if (d.ok) {
-            chatBody.innerHTML = "";
-            welcomeMessage();
-            showToast("Memory cleared.", "good");
-            updateContext(0, contextSize, 0.8);
-        } else {
+        if (!d.ok) {
             showToast("Could not reset.", "bad");
+            closeWarn();
+            return;
         }
+        chatBody.innerHTML = "";
+        updateContext(0, contextSize, 0.8);
+        closeWarn();
+        openReselect();
+    });
+
+    document.querySelectorAll(".reselect-card").forEach((card) => {
+        card.addEventListener("click", async () => {
+            const key = card.dataset.key;
+            // Visual ack while the save round-trips.
+            document.querySelectorAll(".reselect-card").forEach((c) => c.classList.remove("picked"));
+            card.classList.add("picked");
+            await saveSettings({ persona: key });
+            const personaInfo = (APP.personas || {})[key] || {};
+            const currentNameEl = document.getElementById("current-persona-name");
+            if (currentNameEl && personaInfo.name) {
+                currentNameEl.textContent = personaInfo.name;
+            }
+            closeReselect();
+            welcomeMessage();
+            showToast("Meet your new companion.", "good");
+        });
     });
 
     // Thinking toggle (per-user, persisted via /api/user/settings)

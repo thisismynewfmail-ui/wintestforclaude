@@ -2,6 +2,7 @@
 utils.py — shared helpers:
   - config load/save with thread-safety
   - user record load/save with thread-safety
+  - chat history files held in the user's folder, separate from user.json
   - token estimation (~4 chars/token)
   - US zip-code → timezone resolver (built-in, no external API)
   - chat-template presets (Jinja) for ChatML / Qwen / Llama3 / Mistral / Alpaca
@@ -157,7 +158,7 @@ def default_config() -> Dict[str, Any]:
             "system_message": (
                 "You are {bot_name}, a thoughtful digital companion to {user_name}.\n"
                 "Current time for {user_name}: {time}.\n\n"
-                "Your current way of being:\n{persona_A}\n\n"
+                "Your current way of being:\n{persona_auto}\n\n"
                 "Be warm, attentive, and present. Speak as {bot_name}, never break character."
             ),
             "chat_template_preset": "Default (model's built-in)",
@@ -323,25 +324,42 @@ def load_user(username: str) -> Optional[Dict[str, Any]]:
         path = os.path.join(user_dir(username), "user.json")
         try:
             with open(path, "r", encoding="utf-8") as f:
-                return json.load(f)
+                rec = json.load(f)
         except (json.JSONDecodeError, OSError):
             return None
+        # Migrate legacy records that still keep "messages" inline.
+        # Move them into the separate chat history file so user.json only
+        # carries credentials / flags / config / personality data going forward.
+        if "messages" in rec:
+            legacy = rec.pop("messages", []) or []
+            rec.setdefault("chat_count", 1)
+            if legacy:
+                _write_messages(username, legacy)
+            _write_user(username, rec)
+        return rec
 
 
 def save_user(rec: Dict[str, Any]) -> None:
     username = rec["username"]
+    # Strip any chat history that callers may still hand us — it lives
+    # in chat_current.json now, not user.json.
+    rec.pop("messages", None)
+    with _user_lock(username):
+        _write_user(username, rec)
+
+
+def _write_user(username: str, rec: Dict[str, Any]) -> None:
     d = user_dir(username)
     os.makedirs(d, exist_ok=True)
-    with _user_lock(username):
-        path = os.path.join(d, "user.json")
-        tmp = path + ".tmp"
-        with open(tmp, "w", encoding="utf-8") as f:
-            json.dump(rec, f, indent=2)
-        os.replace(tmp, path)
+    path = os.path.join(d, "user.json")
+    tmp = path + ".tmp"
+    with open(tmp, "w", encoding="utf-8") as f:
+        json.dump(rec, f, indent=2)
+    os.replace(tmp, path)
 
 
 def default_user_record(username: str, name: str, email: str, password: str,
-                        zip_code: str, personality: str,
+                        zip_code: str, personality: str, persona: str = "A",
                         role: str = "base") -> Dict[str, Any]:
     return {
         "username": username,
@@ -352,16 +370,96 @@ def default_user_record(username: str, name: str, email: str, password: str,
         "personality": (personality or "").strip(),
         "role": role,  # 'admin' or 'base'
         "bot_name": "Companion",
-        "persona": "A",
+        "persona": persona if persona in ("A", "B", "C", "D") else "A",
         "thinking_on": True,  # per-user toggle for model reasoning
         "ui": {
             "theme": "luna",
             "font_size": 15,
             "bubble_shape": "rounded",
         },
-        "messages": [],  # chat history
+        "chat_count": 1,  # which numbered chat is currently active
         "created": int(time.time()),
     }
+
+
+# ---------------------------------------------------------------------------
+# Chat history IO (separate file, per-user)
+#   - chat_current.json holds the active chat.
+#   - Reset Mind archives it to chat_<N>_<timestamp>.json and bumps chat_count.
+# ---------------------------------------------------------------------------
+
+CURRENT_CHAT_FILENAME = "chat_current.json"
+
+
+def chat_current_path(username: str) -> str:
+    return os.path.join(user_dir(username), CURRENT_CHAT_FILENAME)
+
+
+def _write_messages(username: str, messages: List[Dict[str, Any]]) -> None:
+    d = user_dir(username)
+    os.makedirs(d, exist_ok=True)
+    path = chat_current_path(username)
+    tmp = path + ".tmp"
+    with open(tmp, "w", encoding="utf-8") as f:
+        json.dump({"messages": messages}, f, indent=2)
+    os.replace(tmp, path)
+
+
+def load_messages(username: str) -> List[Dict[str, Any]]:
+    with _user_lock(username):
+        path = chat_current_path(username)
+        if not os.path.exists(path):
+            return []
+        try:
+            with open(path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            return list(data.get("messages") or [])
+        except (json.JSONDecodeError, OSError):
+            return []
+
+
+def save_messages(username: str, messages: List[Dict[str, Any]]) -> None:
+    with _user_lock(username):
+        _write_messages(username, messages)
+
+
+def archive_messages(username: str) -> Optional[str]:
+    """
+    Rename the current chat log to chat_<N>_<timestamp>.json, bump the
+    user's chat_count, and start fresh. Returns the archived filename
+    (or None if there was nothing to archive).
+    """
+    with _user_lock(username):
+        path = chat_current_path(username)
+        rec_path = os.path.join(user_dir(username), "user.json")
+        # Pull chat_count from user.json so archived numbering is stable.
+        chat_n = 1
+        rec: Optional[Dict[str, Any]] = None
+        if os.path.exists(rec_path):
+            try:
+                with open(rec_path, "r", encoding="utf-8") as f:
+                    rec = json.load(f)
+                chat_n = int(rec.get("chat_count", 1) or 1)
+            except (json.JSONDecodeError, OSError, ValueError):
+                rec = None
+
+        archived_name: Optional[str] = None
+        if os.path.exists(path):
+            ts = int(time.time())
+            archived_name = f"chat_{chat_n:03d}_{ts}.json"
+            archived_path = os.path.join(user_dir(username), archived_name)
+            try:
+                os.replace(path, archived_path)
+            except OSError:
+                archived_name = None
+
+        # Always bump the counter so a fresh chat is "the next one" even if
+        # the live file was empty / missing.
+        if rec is not None:
+            rec["chat_count"] = chat_n + 1
+            rec.pop("messages", None)
+            _write_user(username, rec)
+        return archived_name
 
 
 def list_users() -> List[Dict[str, Any]]:
@@ -471,7 +569,18 @@ def local_time_for_zip(zip_code: str) -> str:
 
 def render_system_message(template: str, *, user_rec: Dict[str, Any],
                           config: Dict[str, Any]) -> str:
-    """Substitute special tags in system message for THIS user's request."""
+    """Substitute special tags in system message for THIS user's request.
+
+    Tags:
+      {time}, {user_name}, {bot_name}
+      {persona_A}..{persona_D}  — specific persona descriptions
+      {persona_auto}            — the description of THIS user's selected
+                                  persona (from user_rec["persona"])
+
+    {bot_name} and {user_name} are also expanded *inside* every persona
+    description before it is inlined into the system message, so persona
+    prompts can refer to the bot by its current display name.
+    """
     if not template:
         return ""
 
@@ -480,21 +589,29 @@ def render_system_message(template: str, *, user_rec: Dict[str, Any],
     zip_code = user_rec.get("zip_code") or ""
     time_str = local_time_for_zip(zip_code)
 
+    def _expand_names(text: str) -> str:
+        return (text or "").replace("{bot_name}", bot_name) \
+                           .replace("{user_name}", user_name)
+
     personas = config.get("personas", {})
-    pa = personas.get("A", {}).get("description", "")
-    pb = personas.get("B", {}).get("description", "")
-    pc = personas.get("C", {}).get("description", "")
-    pd = personas.get("D", {}).get("description", "")
+    pa = _expand_names(personas.get("A", {}).get("description", ""))
+    pb = _expand_names(personas.get("B", {}).get("description", ""))
+    pc = _expand_names(personas.get("C", {}).get("description", ""))
+    pd = _expand_names(personas.get("D", {}).get("description", ""))
+
+    selected = (user_rec.get("persona") or "A").upper()
+    persona_auto = {"A": pa, "B": pb, "C": pc, "D": pd}.get(selected, pa)
 
     out = template
     replacements = {
-        "{time}": time_str,
-        "{user_name}": user_name,
-        "{bot_name}": bot_name,
+        "{persona_auto}": persona_auto,
         "{persona_a}": pa, "{persona_A}": pa,
         "{persona_b}": pb, "{persona_B}": pb,
         "{persona_c}": pc, "{persona_C}": pc,
         "{persona_d}": pd, "{persona_D}": pd,
+        "{time}": time_str,
+        "{user_name}": user_name,
+        "{bot_name}": bot_name,
     }
     for k, v in replacements.items():
         out = out.replace(k, v)

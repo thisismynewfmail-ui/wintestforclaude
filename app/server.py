@@ -119,7 +119,9 @@ def create_app(base_dir: str) -> Flask:
     def login():
         if session.get("username"):
             return redirect(url_for("chat"))
-        return render_template("login.html")
+        cfg = get_config()
+        return render_template("login.html",
+                               personas=cfg.get("personas", {}))
 
     @app.route("/chat")
     def chat():
@@ -167,11 +169,15 @@ def create_app(base_dir: str) -> Flask:
         password2 = d.get("password2") or ""
         zip_code = (d.get("zip_code") or "").strip()
         personality = (d.get("personality") or "").strip()
+        persona = (d.get("persona") or "").strip().upper()
 
-        # All fields required.
+        # All fields required. Persona is now picked at signup ("the one
+        # they want") rather than later in the chat settings drawer.
         if not all([username, username2, name, email, password, password2,
-                    zip_code, personality]):
-            return _json_error("All fields are required.")
+                    zip_code, personality, persona]):
+            return _json_error("All fields are required (including a persona).")
+        if persona not in ("A", "B", "C", "D"):
+            return _json_error("Please choose one of the four personas.")
         if username != username2:
             return _json_error("Usernames do not match.")
         if password != password2:
@@ -192,7 +198,8 @@ def create_app(base_dir: str) -> Flask:
 
         rec = utils.default_user_record(
             username=username, name=name, email=email, password=password,
-            zip_code=zip_code, personality=personality, role=role,
+            zip_code=zip_code, personality=personality, persona=persona,
+            role=role,
         )
         utils.save_user(rec)
         session["username"] = rec["username"]
@@ -274,16 +281,18 @@ def create_app(base_dir: str) -> Flask:
         rec = _require_user()
         if not rec:
             return _json_error("Not logged in.", 401)
-        rec["messages"] = []
-        utils.save_user(rec)
-        return jsonify({"ok": True})
+        # Rename the live chat log to chat_<N>_<timestamp>.json and bump the
+        # counter. Per-user only — never touches other users' folders.
+        archived = utils.archive_messages(rec["username"])
+        return jsonify({"ok": True, "archived": archived})
 
     @app.get("/api/user/history")
     def api_user_history():
         rec = _require_user()
         if not rec:
             return _json_error("Not logged in.", 401)
-        return jsonify({"ok": True, "messages": rec.get("messages", [])})
+        messages = utils.load_messages(rec["username"])
+        return jsonify({"ok": True, "messages": messages})
 
     # ----------------------- Chat stream ----------------------------------
 
@@ -315,11 +324,10 @@ def create_app(base_dir: str) -> Flask:
             with send_lock:
                 # Refresh record under lock in case another request edited it.
                 rec_l = utils.load_user(rec["username"]) or rec
-                history = list(rec_l.get("messages", []))
+                history = utils.load_messages(rec_l["username"])
                 history.append({"role": "user", "content": user_msg,
                                 "ts": int(time.time())})
-                rec_l["messages"] = history
-                utils.save_user(rec_l)
+                utils.save_messages(rec_l["username"], history)
 
                 yield _sse({"type": "user_saved", "id": message_id,
                             "ts": history[-1]["ts"]})
@@ -358,13 +366,11 @@ def create_app(base_dir: str) -> Flask:
                 # Persist assistant reply (even partial) and clean think tags
                 # out of the stored copy so they don't compound context.
                 if accumulated:
-                    rec_l = utils.load_user(rec_l["username"]) or rec_l
-                    history = list(rec_l.get("messages", []))
+                    history = utils.load_messages(rec_l["username"])
                     history.append({"role": "assistant",
                                     "content": accumulated,
                                     "ts": int(time.time())})
-                    rec_l["messages"] = history
-                    utils.save_user(rec_l)
+                    utils.save_messages(rec_l["username"], history)
 
                 yield _sse({"type": "end"})
 
@@ -442,13 +448,14 @@ def create_app(base_dir: str) -> Flask:
             return _json_error("Admin only.", 403)
         out = []
         for u in utils.list_users():
+            msgs = utils.load_messages(u.get("username") or "")
             out.append({
                 "username": u.get("username"),
                 "name": u.get("name"),
                 "email": u.get("email"),
                 "role": u.get("role", "base"),
                 "created": u.get("created"),
-                "messages": len(u.get("messages", [])),
+                "messages": len(msgs),
             })
         return jsonify({"ok": True, "users": out})
 

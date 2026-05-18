@@ -95,6 +95,21 @@
                     placeholder="What you're like, what you enjoy, how you talk. A few honest sentences."></textarea>
                 <small class="hint">Your companion gets to know you better with this.</small>
 
+                <label class="field" style="margin-top: 18px;">Choose the one you want</label>
+                <small class="hint" style="margin-top:0; margin-bottom: 8px;">
+                    Four companions are waiting. Pick the one that fits — you can change them later by resetting your companion's mind.
+                </small>
+                <div class="signup-persona-grid" id="signup-persona-grid">
+                    {% for k, p in personas.items() %}
+                    <div class="signup-persona-card" data-key="{{ k }}">
+                        <div class="persona-letter">{{ k }}</div>
+                        <div class="persona-name">{{ p.name }}</div>
+                        <div class="persona-summary">{{ p.summary }}</div>
+                    </div>
+                    {% endfor %}
+                </div>
+                <input type="hidden" id="su-persona" name="persona" value="">
+
                 <div style="margin-top: 20px; display: flex; justify-content: flex-end;">
                     <button type="submit" class="btn primary">Create account</button>
                 </div>

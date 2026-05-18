@@ -92,19 +92,6 @@
         </div>
 
         <div class="section">
-            <h3>Persona</h3>
-            <p style="font-size:12px; color: var(--ink-faint); margin: 0 0 8px;">Choose how your companion shows up today.</p>
-            <div id="persona-list">
-                {% for key, p in personas.items() %}
-                <div class="persona-card{% if user.persona == key %} selected{% endif %}" data-key="{{ key }}">
-                    <div class="persona-name">{{ p.name }}</div>
-                    <div class="persona-summary">{{ p.summary }}</div>
-                </div>
-                {% endfor %}
-            </div>
-        </div>
-
-        <div class="section">
             <h3>Local time</h3>
             <label class="field" for="set-zip">Zip code</label>
             <input type="text" id="set-zip" value="{{ user.zip_code }}" pattern="\d{5}(-\d{4})?">
@@ -140,9 +127,12 @@
         <div class="section">
             <h3>Mind</h3>
             <p style="font-size: 13px; color: var(--ink-soft); margin: 0 0 10px;">
-                Clear the chat history. Your companion won't remember what was said.
+                Clear this chat and meet a new companion. The old log is archived in your folder; you can pick a new persona afterward.
             </p>
             <button class="btn danger" id="reset-mind">Reset Mind</button>
+            <div style="margin-top:8px; font-size:12px; color: var(--ink-faint);">
+                Currently with <b id="current-persona-name">{{ personas[user.persona].name if personas.get(user.persona) else 'your companion' }}</b>.
+            </div>
         </div>
 
         <div class="section" style="margin-top: 18px; border-top: 1px solid var(--rule); padding-top: 14px;">
@@ -150,6 +140,53 @@
         </div>
     </div>
 </aside>
+
+<!-- Reset-Mind warning dialog. Shown before history is archived. -->
+<div class="modal-scrim" id="reset-warn-scrim" aria-hidden="true">
+    <div class="modal-card" role="alertdialog" aria-labelledby="reset-warn-title">
+        <div class="modal-head warning">
+            <span class="modal-ico" aria-hidden="true">!</span>
+            <span id="reset-warn-title">Reset your companion's mind?</span>
+        </div>
+        <div class="modal-body">
+            <p>This will end the current conversation and archive its log
+            in your folder (you can find it as <span class="kbd">chat_NNN_TIMESTAMP.json</span>).</p>
+            <p>Afterwards, you'll be asked to pick a new persona — the one
+            your fresh companion will start out as.</p>
+            <p style="color: var(--ink-faint); font-size: 12px;">This applies to your account only. No one else's chats are touched.</p>
+        </div>
+        <div class="modal-actions">
+            <button class="btn ghost" id="reset-cancel">Never mind</button>
+            <button class="btn danger" id="reset-confirm">Yes — clear &amp; choose new</button>
+        </div>
+    </div>
+</div>
+
+<!--
+    Novel persona-reselect screen. Used ONLY after a Reset Mind. Visually
+    distinct from the settings drawer's old picker (now removed) and from
+    the signup persona grid, so users understand what they're doing.
+-->
+<div class="reselect-overlay" id="reselect-overlay" aria-hidden="true">
+    <div class="reselect-stage">
+        <div class="reselect-header">
+            <div class="reselect-eyebrow">A new beginning</div>
+            <h1>Who would you like beside you now?</h1>
+            <p>Your previous conversation has been tucked away. Choose the
+               companion who'll meet you next.</p>
+        </div>
+        <div class="reselect-grid">
+            {% for key, p in personas.items() %}
+            <button type="button" class="reselect-card" data-key="{{ key }}">
+                <div class="reselect-letter">{{ key }}</div>
+                <div class="reselect-name">{{ p.name }}</div>
+                <div class="reselect-summary">{{ p.summary }}</div>
+                <div class="reselect-pick">Choose {{ p.name }}</div>
+            </button>
+            {% endfor %}
+        </div>
+    </div>
+</div>
 
 <div class="toast" id="toast"></div>
 <div class="scanlines" aria-hidden="true"></div>
