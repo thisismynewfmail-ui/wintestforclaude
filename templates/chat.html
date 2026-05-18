@@ -40,6 +40,13 @@
             <span class="pill compacted" id="compact-pill" title="Conversation was compacted" style="display:none;">
                 <span class="dot"></span>memory tidied
             </span>
+            {% if thinking_enabled %}
+            <button type="button" class="pill think-toggle{% if user.get('thinking_on', True) %} on{% endif %}"
+                    id="think-toggle"
+                    title="Toggle model thinking" aria-pressed="{{ 'true' if user.get('thinking_on', True) else 'false' }}">
+                <span class="dot"></span><span id="think-label">thinking {{ 'on' if user.get('thinking_on', True) else 'off' }}</span>
+            </button>
+            {% endif %}
             <span class="spacer"></span>
             <span style="font-size:12px; color: var(--ink-faint);">signed in as <b>{{ user.username }}</b>{% if user.role == 'admin' %} · admin{% endif %}</span>
             <button class="gear-btn" id="open-settings" aria-label="Settings" title="Settings">⚙</button>
