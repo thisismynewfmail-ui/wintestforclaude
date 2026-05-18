@@ -1,0 +1,6 @@
+# Python bytecode
+__pycache__/
+*.pyc
+
+# Runtime-generated session key (per install, never commit)
+data/.session_secret
