@@ -53,6 +53,11 @@ def _user_lock(username: str) -> threading.RLock:
 # ---------------------------------------------------------------------------
 
 CHAT_TEMPLATES: Dict[str, str] = {
+    # Sentinel preset — when selected, no chat_template is sent to the
+    # endpoint, so the loaded model's built-in tokenizer template is used.
+    # Pick this for "just talk to the model" without a custom wrapper.
+    "Default (model's built-in)": "",
+
     "ChatML (generic)": (
         "{% for message in messages %}"
         "<|im_start|>{{ message.role }}\n{{ message.content }}<|im_end|>\n"
@@ -155,7 +160,7 @@ def default_config() -> Dict[str, Any]:
                 "Your current way of being:\n{persona_A}\n\n"
                 "Be warm, attentive, and present. Speak as {bot_name}, never break character."
             ),
-            "chat_template_preset": "ChatML (generic)",
+            "chat_template_preset": "Default (model's built-in)",
             "chat_template_override": "",
             "use_template_override": False,
             "thinking_enabled": True,
@@ -348,6 +353,7 @@ def default_user_record(username: str, name: str, email: str, password: str,
         "role": role,  # 'admin' or 'base'
         "bot_name": "Companion",
         "persona": "A",
+        "thinking_on": True,  # per-user toggle for model reasoning
         "ui": {
             "theme": "luna",
             "font_size": 15,

@@ -423,6 +423,14 @@ small.hint { color: var(--ink-faint); display: block; margin-top: 4px; font-size
     background: var(--ink-faint);
 }
 .chat-toolbar .pill.compacted .dot { background: var(--ember); animation: blip 1.4s infinite; }
+.chat-toolbar .pill.think-toggle {
+    cursor: pointer; user-select: none;
+    font: inherit; color: inherit;
+}
+.chat-toolbar .pill.think-toggle:hover { filter: brightness(.97); }
+.chat-toolbar .pill.think-toggle.on .dot { background: var(--moss); }
+.chat-toolbar .pill.think-toggle:not(.on) { opacity: .7; }
+.chat-toolbar .pill.think-toggle:not(.on) .dot { background: var(--ink-faint); }
 @keyframes blip { 0%,100%{opacity:.5;} 50%{opacity:1;} }
 .chat-toolbar .spacer { flex: 1; }
 

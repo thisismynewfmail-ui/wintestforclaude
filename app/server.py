@@ -256,6 +256,9 @@ def create_app(base_dir: str) -> Flask:
                     val = val[:40]
                 rec[f] = val
 
+        if "thinking_on" in d:
+            rec["thinking_on"] = bool(d["thinking_on"])
+
         ui = d.get("ui") or {}
         if isinstance(ui, dict):
             allowed_ui = ("theme", "font_size", "bubble_shape")
@@ -323,10 +326,17 @@ def create_app(base_dir: str) -> Flask:
 
                 accumulated = ""
                 meta_sent = False
+                # Per-user toggle (defaults to admin's thinking_enabled flag
+                # so existing users without the field behave as before).
+                thinking_on = rec_l.get(
+                    "thinking_on",
+                    cfg.get("llm", {}).get("thinking_enabled", True),
+                )
                 try:
                     for ev in llm.run_completion(
                         config=cfg, user_rec=rec_l, history=history,
                         system_msg=system_msg,
+                        thinking_on=thinking_on,
                     ):
                         t = ev.get("type")
                         if t == "meta":

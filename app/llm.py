@@ -18,7 +18,7 @@ from typing import Any, Dict, Generator, List, Optional, Tuple
 
 import requests
 
-from .utils import est_messages_tokens, est_tokens
+from .utils import CHAT_TEMPLATES, est_messages_tokens, est_tokens
 
 
 # Per-user send locks. Two messages from the same user are serialized;
@@ -137,7 +137,9 @@ def compact_messages(system_msg: str, history: List[Dict[str, str]],
 # ---------------------------------------------------------------------------
 
 def build_payload(model: str, messages: List[Dict[str, str]],
-                  sampling: Dict[str, Any], stream: bool = True) -> Dict[str, Any]:
+                  sampling: Dict[str, Any], stream: bool = True,
+                  chat_template: Optional[str] = None,
+                  enable_thinking: Optional[bool] = None) -> Dict[str, Any]:
     """
     Build an OpenAI-compatible chat completion payload.
 
@@ -145,12 +147,20 @@ def build_payload(model: str, messages: List[Dict[str, str]],
       temperature, top_p, frequency_penalty, presence_penalty, max_tokens
     Common locally-served extensions (llama.cpp, vLLM, text-generation-webui):
       top_k, min_p, repetition_penalty
+    LM Studio / vLLM extensions:
+      chat_template (Jinja string override), chat_template_kwargs
+      (e.g. enable_thinking for Qwen3-style reasoning toggle).
     """
     payload: Dict[str, Any] = {
         "model": model,
         "messages": messages,
         "stream": stream,
     }
+
+    if chat_template:
+        payload["chat_template"] = chat_template
+    if enable_thinking is not None:
+        payload["chat_template_kwargs"] = {"enable_thinking": bool(enable_thinking)}
 
     # OpenAI native
     if "temperature" in sampling:
@@ -213,6 +223,16 @@ def stream_chat(endpoint: str, api_key: str, payload: Dict[str, Any],
                        "message": f"HTTP {r.status_code}: {body}"}
                 return
 
+            # SSE bodies are UTF-8 but `text/event-stream` rarely carries a
+            # charset, so requests falls back to ISO-8859-1 and mangles
+            # multi-byte glyphs (emoji, smart quotes). Pin it explicitly.
+            r.encoding = "utf-8"
+
+            # Track whether we are currently inside a reasoning span so we
+            # emit a single <think>…</think> across the whole stream rather
+            # than wrapping every token in its own pair.
+            in_thinking = False
+
             for raw in r.iter_lines(decode_unicode=True):
                 if cancel_event is not None and cancel_event.is_set():
                     yield {"type": "error", "message": "cancelled"}
@@ -223,6 +243,9 @@ def stream_chat(endpoint: str, api_key: str, payload: Dict[str, Any],
                     continue
                 data = raw[5:].strip()
                 if data == "[DONE]":
+                    if in_thinking:
+                        yield {"type": "delta", "text": "</think>"}
+                        in_thinking = False
                     yield {"type": "done", "finish_reason": "stop"}
                     return
                 try:
@@ -237,16 +260,29 @@ def stream_chat(endpoint: str, api_key: str, payload: Dict[str, Any],
                 # OpenAI-compatible: content lives in delta.content
                 piece = delta.get("content")
                 # Some servers expose a separate reasoning_content field for
-                # Qwen/DeepSeek-style thinking. Surface it as a tagged delta.
+                # Qwen/DeepSeek-style thinking. Open the <think> block once
+                # on first reasoning token, close it once real content arrives.
                 reasoning = delta.get("reasoning_content")
                 if reasoning:
-                    yield {"type": "delta", "text": f"<think>{reasoning}</think>"}
+                    if not in_thinking:
+                        yield {"type": "delta", "text": "<think>"}
+                        in_thinking = True
+                    yield {"type": "delta", "text": reasoning}
                 if piece:
+                    if in_thinking:
+                        yield {"type": "delta", "text": "</think>"}
+                        in_thinking = False
                     yield {"type": "delta", "text": piece}
                 finish = ch.get("finish_reason")
                 if finish:
+                    if in_thinking:
+                        yield {"type": "delta", "text": "</think>"}
+                        in_thinking = False
                     yield {"type": "done", "finish_reason": finish}
                     return
+            # Stream ended without explicit [DONE] / finish_reason
+            if in_thinking:
+                yield {"type": "delta", "text": "</think>"}
     except requests.RequestException as exc:
         yield {"type": "error",
                "message": f"{exc.__class__.__name__}: {exc}"}
@@ -256,9 +292,35 @@ def stream_chat(endpoint: str, api_key: str, payload: Dict[str, Any],
 # Conversation orchestrator
 # ---------------------------------------------------------------------------
 
+DEFAULT_TEMPLATE_PRESET = "Default (model's built-in)"
+
+
+def _resolve_chat_template(llm_cfg: Dict[str, Any]) -> Optional[str]:
+    """
+    Decide which Jinja chat template (if any) to send with the request.
+
+      - Override flag ON:  send the user's custom template (if non-empty),
+                           otherwise fall through to the preset.
+      - Preset == 'Default (model's built-in)': send NOTHING so the model's
+                           own template applies. This is the simple-chat
+                           fallback.
+      - Otherwise:         send the named preset's body.
+    """
+    if llm_cfg.get("use_template_override"):
+        override = (llm_cfg.get("chat_template_override") or "").strip()
+        if override:
+            return override
+    preset = (llm_cfg.get("chat_template_preset") or "").strip()
+    if not preset or preset == DEFAULT_TEMPLATE_PRESET:
+        return None
+    body = CHAT_TEMPLATES.get(preset)
+    return body or None
+
+
 def run_completion(*, config: Dict[str, Any], user_rec: Dict[str, Any],
                    history: List[Dict[str, str]], system_msg: str,
-                   cancel_event: Optional[threading.Event] = None
+                   cancel_event: Optional[threading.Event] = None,
+                   thinking_on: Optional[bool] = None
                    ) -> Generator[Dict[str, Any], None, None]:
     """
     Top-level streaming generator used by the server's SSE endpoint.
@@ -291,11 +353,22 @@ def run_completion(*, config: Dict[str, Any], user_rec: Dict[str, Any],
         "dropped": max(0, len(history) - len(new_hist)),
     }
 
+    # Per-request thinking preference wins; otherwise fall back to admin
+    # setting. Only forward the flag when the admin has actually enabled the
+    # toggle — otherwise leave it unset so the model's own default applies.
+    enable_thinking: Optional[bool] = None
+    if thinking_on is not None:
+        enable_thinking = bool(thinking_on)
+    elif "thinking_enabled" in llm_cfg:
+        enable_thinking = bool(llm_cfg.get("thinking_enabled"))
+
     payload = build_payload(
         model=llm_cfg.get("model_name", "local-model"),
         messages=messages,
         sampling=sampling,
         stream=True,
+        chat_template=_resolve_chat_template(llm_cfg),
+        enable_thinking=enable_thinking,
     )
 
     endpoint = llm_cfg.get("endpoint", "")

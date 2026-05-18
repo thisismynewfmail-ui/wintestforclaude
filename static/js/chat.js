@@ -503,6 +503,20 @@
         }
     });
 
+    // Thinking toggle (per-user, persisted via /api/user/settings)
+    const thinkToggle = document.getElementById("think-toggle");
+    const thinkLabel = document.getElementById("think-label");
+    if (thinkToggle) {
+        thinkToggle.addEventListener("click", async () => {
+            const next = !thinkToggle.classList.contains("on");
+            thinkToggle.classList.toggle("on", next);
+            thinkToggle.setAttribute("aria-pressed", String(next));
+            if (thinkLabel) thinkLabel.textContent = "thinking " + (next ? "on" : "off");
+            APP.user.thinking_on = next;
+            await saveSettings({ thinking_on: next });
+        });
+    }
+
     // Sign out
     async function signOut() {
         await fetch("/api/logout", { method: "POST", credentials: "same-origin" });
